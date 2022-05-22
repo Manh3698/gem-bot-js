@@ -37,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "manh.nguyenvan";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMxOTA3NjcxNDEsImV4cCI6MTY1NDk5MDc2N30.lk88iHCrudTA71ndGxSCGaCm7cqfT9vB8W8FCzXOE6ZoSOFQRivP-_C0nkGw4T9s3JonCnYrarL1o_ZgGz5Vzg";
+const username = "nhan.nguyenduy";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJuaGFuLm5ndXllbmR1eSIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMxOTA3OTQ4OTksImV4cCI6MTY1NDk5MDc5NH0.cdWwIBfhRXLoey_ZTMsAi9wr1k0hWU67JcSzApjmbPy1dXTWo1vMIEgOsNGFzAww9hjl9IIhuiKaS49Fl_Vz6A";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -160,8 +160,6 @@ function trace(message, prefix, isDebug) {
 	visualizer.log(log);
 }
 
-
-
 function reset() {
 	// Remove SFS2X listeners
 	sfs.removeEventListener(SFS2X.SFSEvent.CONNECTION, onConnection);
@@ -218,7 +216,6 @@ function OnRoomJoin(event) {
 
 function OnRoomJoinError(event) {
 	trace("OnRoomJoinError");
-	console.error(event);
 }
 
 function OnExtensionResponse(event) {
@@ -376,11 +373,9 @@ function AssignPlayers(room) {
 		return;
 	}
 
-
 	let user2 = users[1];
 
 	let playerId2 = Array.from(user2._playerIdByRoomId).map(([name, value]) => (value))[1];
-
 
 	log("id user2: " + playerId2);
 
@@ -394,8 +389,6 @@ function AssignPlayers(room) {
 		botPlayer = new Player(playerId2, "player" + playerId2);
 		enemyPlayer = new Player(playerId1, "player" + playerId1);
 	}
-
-
 }
 
 function EndGame() {
@@ -405,7 +398,6 @@ function EndGame() {
 	visualizer.snapShot();
 }
 
-
 function SendFinishTurn(isFirstTurn) {
 	let data = new SFS2X.SFSObject();
 	data.putBool("isFirstTurn", isFirstTurn);
@@ -413,7 +405,6 @@ function SendFinishTurn(isFirstTurn) {
 	trace("sendExtensionRequest()|room:" + room.name + "|extCmd:" + FINISH_TURN + " first turn " + isFirstTurn);
 
 	SendExtensionRequest(FINISH_TURN, data);
-
 }
 
 function StartTurn(param) {
@@ -429,38 +420,92 @@ function StartTurn(param) {
 			strategy.playTurn();
 			return;
 		}
+
+		// console.log(botPlayer.heroes);
+		// console.log(enemyPlayer.heroes);
+		// console.log(grid.gems);
 		
-		if(enemyTeamHaveFireSpirit()) {
-			console.log("dame", getDameEnemyFireSpirit());
-		}
-
-		// const Sea_spirit = botPlayer.getHerosAlive()[0].id == "SEA_SPIRIT" ? botPlayer.getHerosAlive()[0] : null;
-		// if(Sea_spirit) {
-		// 	if(Sea_spirit.mana == Sea_spirit.maxMana) {
-		// 		enemyPlayer.getHerosAlive().forEach(enemyHero => {
-		// 			if(enemyHero.mana == enemyHero.maxMana) {
-		// 				if(enemyHero.attack) 
-		// 			}
-		// 		});
-		// 		SendCastSkill(true);
-		// 	}		
-		// }
-
-		let heroFullMana = botPlayer.anyHeroFullMana();
-		if (heroFullMana != null) {
-			SendCastSkill(heroFullMana)
+		if (botPlayer.heroes[1].mana >= botPlayer.heroes[1].maxMana) {
+			let countRedGems = 0;
+			grid.gems.forEach((item) => {
+				if (item.type === 3) {
+					countRedGems++;
+				}
+			})
+			let killableArr = [];
+			killableArr = enemyPlayer.heroes.map(item => {
+				if (isFireKillable(item.hp, item.attack, countRedGems)) {
+					return item.id;
+				}
+			}).filter(item => item !== undefined);
+			// const buffEnemy = GetBuffEnemy();
+			// enemyPlayer.heroes.forEach(item => {
+			// 	arr.push({
+			// 		restHp: (item.hp - (item.attack + countRedGems)).toString(),
+			// 		restMana: item.maxMana - item.mana,
+			// 		id: item.id,
+			// 	});
+			// })
+			console.log(killableArr);
+			killableArr.length > 0 ? 
+			SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0] }) : 
+			buffEnemyHasSkill().length > 0 ? SendSwapGem() : 
+			SendCastSkill(botPlayer.heroes[1], { targetId: freeSkill().id });
 		} else {
 			SendSwapGem()
 		}
 
+		// SendCastFireSkill();
+		// let heroFullMana = botPlayer.anyHeroFullMana();
+		// if (heroFullMana != null) {
+		// 	SendCastSkill(heroFullMana)
+		// } else {
+		// 	SendSwapGem()
+		// }
+
 	}, delaySwapGem);
 }
+
+function compare( a, b ) {
+	if ( a.hp < b.hp ){
+	  return -1;
+	}
+	if ( a.hp > b.hp ){
+	  return 1;
+	}
+	return 0;
+}
+
+function buffEnemyHasSkill() {
+	return enemyPlayer.heroes.filter((item) => isHeroBuff(item.id) && item.isFullMana())
+}
+
+function freeSkill() {
+	return enemyPlayer.heroes.sort(compare)[0];
+}
+
+function isFireKillable(hp, attack, gem) {
+	console.log(hp, attack, gem, hp - (attack + gem));
+	return hp - (attack + gem) <= 0 ? true : false
+}
+
+function GetBuffEnemy() {
+	return enemyPlayer.heroes.filter((item) => item.id === 'MONK' || item.id === 'SEA_SPIRIT' || item.id === 'MERMAID');
+}
+
+// function SendCastFireSkill() {
+// 	let countRedGems = 0;
+// 	grid.gems.forEach((item) => {
+// 		if (item.type === 3) {
+// 			countRedGems++;
+// 		}
+// 	})
+// 	console.log('countRedGems', countRedGems);
+// }
 
 function isBotTurn() {
 	return botPlayer.playerId == currentPlayerId;
 }
-
-
 
 function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTargetAllyOrNot } = {}) {
 	var data = new SFS2X.SFSObject();
@@ -473,7 +518,6 @@ console.log("herr", heroCastSkill, targetId);
 	} else {
 		data.putUtfString("targetId", enemyPlayer.firstHeroAlive().id.toString());
 	}
-	console.log("selectedGem:  ", SelectGem());
 	if (selectedGem) {
 		data.putUtfString("selectedGem", selectedGem);
 	} {
@@ -538,7 +582,6 @@ function SendSwapGem(swap) {
 	data.putInt("index1", parseInt(indexSwap.matchGemFirst[0]));
 	data.putInt("index2", parseInt(indexSwap.matchGemFirst[1]));
 	SendExtensionRequest(SWAP_GEM, data);
-
 }
 
 function SwapGem(param) {
@@ -572,10 +615,8 @@ function HandleGems(paramz) {
 	let gemCode = lastSnapshot.getSFSArray("gems");
 	let gemModifiers = lastSnapshot.getSFSArray("gemModifiers");
 
-	// console.log("gemModifiers : ", gemModifiers);
-
 	grid.updateGems(gemCode, gemModifiers);
-
+	// SendExtensionRequest(END_TURN);
 	// setTimeout(function () { SendFinishTurn(false) }, delaySwapGem);
 }
 
@@ -609,12 +650,7 @@ function GetRandomInt(max) {
 function SelectGem() {
 	let recommendGemType = botPlayer.getRecommendGemType();
 
-	console.log("recommendGemType: ", recommendGemType);
-	console.log("grid.gemType : ", grid.gemTypes);
-
 	let gemSelect = Array.from(recommendGemType).find(gemType => Array.from(grid.gemTypes).includes(gemType));
-
-	console.log("gemSelect : ", gemSelect);
 
 	return gemSelect;
 }

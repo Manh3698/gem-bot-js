@@ -28,15 +28,11 @@ class Grid {
             this.gems.push(gem);
 
             this.gemTypes.add(gem.type);
-
-            // console.log(i + ": " + gem.type)
         }
     }
 
     recommendSwapGem() {
         let listMatchGem = this.suggestMatch();
-
-        console.log("recommendSwapGem: ", listMatchGem);
 
         if (listMatchGem.length === 0) {
             return {matchGemFirst:[-1, -1], listMatchGem};
@@ -60,12 +56,7 @@ class Grid {
             return {matchGemFirst: matchGemSword.getIndexSwapGem(), listMatchGem};
         }
 
-        console.log("myHeroGemType: ", this.myHeroGemType, "| Array.from(this.myHeroGemType)", Array.from(this.myHeroGemType));
-
         let matchGemType = listMatchGem.find(gemMatch => Array.from(this.myHeroGemType).includes(gemMatch.type));
-
-        console.log("matchGem: ", matchGemType);
-
 
         if (matchGemType) {
             console.log("matchGemType ");
@@ -86,7 +77,6 @@ class Grid {
             let swapGem = null;
             // If x > 0 => swap left & check
 
-            // console.log("currentGem : ", currentGem);
             if (currentGem.x > 0) {
 
                 swapGem = this.gems[this.getGemIndexAt(parseInt(currentGem.x - 1), parseInt(currentGem.y))];
@@ -243,7 +233,6 @@ class Grid {
     performSwap(index1, index2) {
         const currentGem = this.gems[index1];
         const swapGem = this.gems[index2];
-        console.log(currentGem, swapGem);
         this.swap(currentGem, swapGem);
         const allMatchGems = this.getAllMatches();
         const distinction = new GridDistinction();
