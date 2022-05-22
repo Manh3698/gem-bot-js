@@ -26,6 +26,9 @@ const BOT_PLAYER_ID = 2;
 const delaySwapGem = 2000;
 const delayFindGame = 5000;
 
+const SINGLEATTACKHEROS = ["DISPATER", "SKELETON", "FIRE_SPIRIT"];
+const BUFFHEROS = ["SEA_SPIRIT", "MONK", "MERMAID"];
+
 var sfs;
 var room;
 
@@ -34,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "";
-const token = "bot";
+const username = "manh.nguyenvan";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMxOTA3NjcxNDEsImV4cCI6MTY1NDk5MDc2N30.lk88iHCrudTA71ndGxSCGaCm7cqfT9vB8W8FCzXOE6ZoSOFQRivP-_C0nkGw4T9s3JonCnYrarL1o_ZgGz5Vzg";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -245,6 +248,57 @@ function OnExtensionResponse(event) {
 			break;
 	}
 }
+//-------------------------------
+// HELPER method
+function getCountGem(gemType) {
+	let countGem = 0;
+	grid.gems.forEach(gem => {
+		gem.type == gemType && countGem++;
+	});
+	return countGem;
+}
+
+function enemyTeamHaveFate() {
+	return enemyPlayer.getHerosAlive().some(hero => hero.id == "DISPATER");
+}
+
+function enemyTeamHaveFireSpirit() {
+	return enemyPlayer.getHerosAlive().some(hero => hero.id == "FIRE_SPIRIT");
+}
+
+function getDameEnemyFireSpirit() {
+	let countRedGem = getCountGem(3);
+	const myHeros = botPlayer.getHerosAlive();
+	let attackEnemy = [];
+	myHeros.forEach(hero => {
+		attackEnemy.push(hero.attack + countRedGem);
+	});
+	return attackEnemy;
+}
+
+function getDameMyFireSpirit() {
+	let countRedGem = getCountGem(3);
+	const myHeros = enemyPlayer.getHerosAlive();
+	let attackEnemy = [];
+	myHeros.forEach(hero => {
+		attackEnemy.push(hero.attack + countRedGem);
+	});
+	return attackEnemy;
+}
+
+function isHaveSeaGodFullMana() {
+	const seaGod = enemyPlayer.getHerosAlive().find(h => h.id == "SEA_GOD");
+	return seaGod !=null && seaGod.mana >= seaGod.maxMana;
+}
+
+function isHeroSingleAttack(hero) {
+	return SINGLEATTACKHEROS.includes(hero) ? true : false;
+}
+
+function isHeroBuff(hero) {
+	return BUFFHEROS.includes(hero) ? true : false;
+}
+// END helper method
 
 function StartGame(gameSession, room) {
 	// Assign Bot player & enemy player
@@ -362,7 +416,6 @@ function SendFinishTurn(isFirstTurn) {
 
 }
 
-
 function StartTurn(param) {
 	setTimeout(function() {
 		visualizer.snapShot();
@@ -376,6 +429,23 @@ function StartTurn(param) {
 			strategy.playTurn();
 			return;
 		}
+		
+		if(enemyTeamHaveFireSpirit()) {
+			console.log("dame", getDameEnemyFireSpirit());
+		}
+
+		// const Sea_spirit = botPlayer.getHerosAlive()[0].id == "SEA_SPIRIT" ? botPlayer.getHerosAlive()[0] : null;
+		// if(Sea_spirit) {
+		// 	if(Sea_spirit.mana == Sea_spirit.maxMana) {
+		// 		enemyPlayer.getHerosAlive().forEach(enemyHero => {
+		// 			if(enemyHero.mana == enemyHero.maxMana) {
+		// 				if(enemyHero.attack) 
+		// 			}
+		// 		});
+		// 		SendCastSkill(true);
+		// 	}		
+		// }
+
 		let heroFullMana = botPlayer.anyHeroFullMana();
 		if (heroFullMana != null) {
 			SendCastSkill(heroFullMana)
@@ -394,7 +464,7 @@ function isBotTurn() {
 
 function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTargetAllyOrNot } = {}) {
 	var data = new SFS2X.SFSObject();
-
+console.log("herr", heroCastSkill, targetId);
 	data.putUtfString("casterId", heroCastSkill.id.toString());
 	if (targetId) {
 		data.putUtfString("targetId", targetId);
@@ -424,20 +494,49 @@ function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTarge
 	trace("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + USE_SKILL + "|Hero cast skill: " + heroCastSkill.name);
 
 	SendExtensionRequest(USE_SKILL, data);
-
+	SendExtensionRequest(END_TURN, data);
 }
 
 function SendSwapGem(swap) {
-	let indexSwap = swap ? swap.getIndexSwapGem() : grid.recommendSwapGem();
 
+	
+	let indexSwap = swap ? swap.getIndexSwapGem() : grid.recommendSwapGem();
 	log("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + SWAP_GEM + "|index1: " + indexSwap[0] + " index2: " + indexSwap[1]);
 	trace("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + SWAP_GEM + "|index1: " + indexSwap[0] + " index2: " + indexSwap[1]);
-
+	
 	var data = new SFS2X.SFSObject();
+	
+	if(enemyTeamHaveFate()) {
+		if(enemyPlayer.getHerosAlive()[0].id == "DISPATER") {
+			var myFirstHero = botPlayer.getHerosAlive()[0];
+			var enemyFate = enemyPlayer.getHerosAlive().find(i => i.id == "DISPATER");
+			if(myFirstHero.attack >= enemyFate.hp) {
+				indexSwap.listMatchGem.forEach(item => {
+					if(item.type == 0) {
+						data.putInt("index1", parseInt(item.index1));
+						data.putInt("index2", parseInt(item.index2));
+						
+						console.log("listMatchGemHUHUHUHU",data);
+						SendExtensionRequest(SWAP_GEM, data);
+						return;
+					};
+				});
+			}
+		}
+		indexSwap.listMatchGem.forEach(item => {
+			if(item.type == 3) {
+				data.putInt("index1", parseInt(item.index1));
+				data.putInt("index2", parseInt(item.index2));
+				
+				console.log("listMatchGemHUHUHUHU",data);
+				SendExtensionRequest(SWAP_GEM, data);
+				return;
+			};
+		});
+	};
 
-	data.putInt("index1", parseInt(indexSwap[0]));
-	data.putInt("index2", parseInt(indexSwap[1]));
-
+	data.putInt("index1", parseInt(indexSwap.matchGemFirst[0]));
+	data.putInt("index2", parseInt(indexSwap.matchGemFirst[1]));
 	SendExtensionRequest(SWAP_GEM, data);
 
 }
@@ -473,7 +572,7 @@ function HandleGems(paramz) {
 	let gemCode = lastSnapshot.getSFSArray("gems");
 	let gemModifiers = lastSnapshot.getSFSArray("gemModifiers");
 
-	console.log("gemModifiers : ", gemModifiers);
+	// console.log("gemModifiers : ", gemModifiers);
 
 	grid.updateGems(gemCode, gemModifiers);
 

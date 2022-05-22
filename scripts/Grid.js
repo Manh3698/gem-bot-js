@@ -39,25 +39,25 @@ class Grid {
         console.log("recommendSwapGem: ", listMatchGem);
 
         if (listMatchGem.length === 0) {
-            return [-1, -1];
+            return {matchGemFirst:[-1, -1], listMatchGem};
         }
 
         let matchGemSizeThanFour = listMatchGem.find(gemMatch => gemMatch.sizeMatch > 4);
 
         if (matchGemSizeThanFour) {
-            return matchGemSizeThanFour.getIndexSwapGem();
+            return {matchGemFirst: matchGemSizeThanFour.getIndexSwapGem(), listMatchGem};
         }
 
         let matchGemSizeThanThree = listMatchGem.find(gemMatch => gemMatch.sizeMatch > 3);
 
         if (matchGemSizeThanThree) {
-            return matchGemSizeThanThree.getIndexSwapGem();
+            return {matchGemFirst: matchGemSizeThanThree.getIndexSwapGem(), listMatchGem};
         }
 
         let matchGemSword = listMatchGem.find(gemMatch => gemMatch.type == GemType.SWORD);
 
         if (matchGemSword) {
-            return matchGemSword.getIndexSwapGem();
+            return {matchGemFirst: matchGemSword.getIndexSwapGem(), listMatchGem};
         }
 
         console.log("myHeroGemType: ", this.myHeroGemType, "| Array.from(this.myHeroGemType)", Array.from(this.myHeroGemType));
@@ -69,19 +69,18 @@ class Grid {
 
         if (matchGemType) {
             console.log("matchGemType ");
-            return matchGemType.getIndexSwapGem();
+            return {matchGemFirst: matchGemType.getIndexSwapGem(), listMatchGem};
         }
 
         console.log("listMatchGem[0].getIndexSwapGem() ", listMatchGem[0].getIndexSwapGem());
 
-        return listMatchGem[0].getIndexSwapGem();
+        return {matchGemFirst: listMatchGem[0].getIndexSwapGem(), listMatchGem};
     }
 
     suggestMatch() {
         let listMatchGem = [];
 
         const tempGems = [...this.gems];
-
         tempGems.forEach(currentGem => {
 
             let swapGem = null;
