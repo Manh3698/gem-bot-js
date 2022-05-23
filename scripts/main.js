@@ -37,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "nhan.nguyenduy";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJuaGFuLm5ndXllbmR1eSIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMxOTA3OTQ4OTksImV4cCI6MTY1NDk5MDc5NH0.cdWwIBfhRXLoey_ZTMsAi9wr1k0hWU67JcSzApjmbPy1dXTWo1vMIEgOsNGFzAww9hjl9IIhuiKaS49Fl_Vz6A";
+const username = "manh.nguyenvan";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMzMTg2MDAwMTAsImV4cCI6MTY1NTExODYwMH0.bUFaJp65ZKzECtfFUof5zNWTVtiRMpZ-2KOikZFHwsMKvGh5lSbGaqSn11uWFGBfTMSx4zAx3UhmXf2BpdiY8w";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -424,7 +424,7 @@ function StartTurn(param) {
 		// console.log(botPlayer.heroes);
 		// console.log(enemyPlayer.heroes);
 		// console.log(grid.gems);
-		
+		let heroFullMana = botPlayer.anyHeroFullMana();
 		if (botPlayer.heroes[1].mana >= botPlayer.heroes[1].maxMana) {
 			let countRedGems = 0;
 			grid.gems.forEach((item) => {
@@ -451,7 +451,10 @@ function StartTurn(param) {
 			SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0] }) : 
 			buffEnemyHasSkill().length > 0 ? SendSwapGem() : 
 			SendCastSkill(botPlayer.heroes[1], { targetId: freeSkill().id });
-		} else {
+		} else if(heroFullMana != null) {
+			SendCastSkill(heroFullMana)
+		} 
+		else {
 			SendSwapGem()
 		}
 
@@ -550,23 +553,22 @@ function SendSwapGem(swap) {
 	
 	var data = new SFS2X.SFSObject();
 	
+	var myFirstHero = botPlayer.getHerosAlive()[0];
+	var enemyFirstHero = enemyPlayer.getHerosAlive()[0];
+	if(myFirstHero.attack >= enemyFirstHero.hp) {
+		indexSwap.listMatchGem.forEach(item => {
+			if(item.type == 0) {
+				data.putInt("index1", parseInt(item.index1));
+				data.putInt("index2", parseInt(item.index2));
+				
+				console.log("listMatchGemHUHUHUHU",data);
+				SendExtensionRequest(SWAP_GEM, data);
+				return;
+			};
+		});
+	}
+
 	if(enemyTeamHaveFate()) {
-		if(enemyPlayer.getHerosAlive()[0].id == "DISPATER") {
-			var myFirstHero = botPlayer.getHerosAlive()[0];
-			var enemyFate = enemyPlayer.getHerosAlive().find(i => i.id == "DISPATER");
-			if(myFirstHero.attack >= enemyFate.hp) {
-				indexSwap.listMatchGem.forEach(item => {
-					if(item.type == 0) {
-						data.putInt("index1", parseInt(item.index1));
-						data.putInt("index2", parseInt(item.index2));
-						
-						console.log("listMatchGemHUHUHUHU",data);
-						SendExtensionRequest(SWAP_GEM, data);
-						return;
-					};
-				});
-			}
-		}
 		indexSwap.listMatchGem.forEach(item => {
 			if(item.type == 3) {
 				data.putInt("index1", parseInt(item.index1));
@@ -579,9 +581,46 @@ function SendSwapGem(swap) {
 		});
 	};
 
+	const brownGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 6);
+	const blueGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 5);
+	const greenGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 1);
+	const yellowGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 2);
+	const redGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 3);
+	const purpleGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 4);
+console.log(botPlayer.heroes);
+	if(botPlayer.heroes[2].isAlive() &&brownGemMatch.length > 0) {
+		data.putInt("index1", parseInt(brownGemMatch[0].index1));
+		data.putInt("index2", parseInt(brownGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return;
+	} else if (botPlayer.heroes[2].isAlive() &&blueGemMatch.length > 0) {
+		data.putInt("index1", parseInt(blueGemMatch[0].index1));
+		data.putInt("index2", parseInt(blueGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return
+	} else if (botPlayer.heroes[1].isAlive() && yellowGemMatch.length > 0) {
+		data.putInt("index1", parseInt(yellowGemMatch[0].index1));
+		data.putInt("index2", parseInt(yellowGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return
+	} else if (botPlayer.heroes[1].isAlive() && greenGemMatch.length > 0) {
+		data.putInt("index1", parseInt(greenGemMatch[0].index1));
+		data.putInt("index2", parseInt(greenGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return
+	}
+
 	data.putInt("index1", parseInt(indexSwap.matchGemFirst[0]));
 	data.putInt("index2", parseInt(indexSwap.matchGemFirst[1]));
 	SendExtensionRequest(SWAP_GEM, data);
+}
+
+function findGemTypeMatch(listMatchGem, gemType) {
+	return listMatchGem.filter(gem => gem.type == gemType);
 }
 
 function SwapGem(param) {
