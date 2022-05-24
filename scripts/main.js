@@ -37,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "manh.nguyenvan";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMzMTg2MDAwMTAsImV4cCI6MTY1NTExODYwMH0.bUFaJp65ZKzECtfFUof5zNWTVtiRMpZ-2KOikZFHwsMKvGh5lSbGaqSn11uWFGBfTMSx4zAx3UhmXf2BpdiY8w";
+const username = "nhan.nguyenduy";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJuaGFuLm5ndXllbmR1eSIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMzNjk3MzQ4MjYsImV4cCI6MTY1NTE2OTczNH0.P4ZnpfHpGF9ACTJWGUjlj3oBJVG8w0LjUEzcE0iULId6jMVUqRVaBHqiJuWlIUrBGLDH47bE1mJwln1SYV9l7g";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -407,6 +407,25 @@ function SendFinishTurn(isFirstTurn) {
 	SendExtensionRequest(FINISH_TURN, data);
 }
 
+function castFireSkill() {
+	let killableArr = [];
+
+	killableArr = enemyPlayer.getHerosAlive().map(item => {
+		if (isFireKillable(item.hp, item.attack, getCountGem(3))) {
+			return item.id;
+		}
+	}).filter(item => item !== undefined);
+
+	let killableFullMana = killableArr.length > 0 && killableArr.forEach(itemK => {
+		return botPlayer.heroes.filter(item => item.id === itemK && item.isFullMana())
+	})
+
+	killableArr.length > 0 ? 
+	SendCastSkill(botPlayer.heroes[1], { targetId: killableFullMana[0] ? killableFullMana[0].id : enemyLowestHP().id }) : 
+	buffEnemyHasSkill().length > 0 ? SendSwapGem() : 
+	SendCastSkill(botPlayer.heroes[1], { targetId: enemyHighestAttack().id });
+}
+
 function StartTurn(param) {
 	setTimeout(function() {
 		visualizer.snapShot();
@@ -421,51 +440,55 @@ function StartTurn(param) {
 			return;
 		}
 
-		// console.log(botPlayer.heroes);
-		// console.log(enemyPlayer.heroes);
-		// console.log(grid.gems);
-		let heroFullMana = botPlayer.anyHeroFullMana();
-		if (botPlayer.heroes[1].mana >= botPlayer.heroes[1].maxMana) {
-			let countRedGems = 0;
-			grid.gems.forEach((item) => {
-				if (item.type === 3) {
-					countRedGems++;
-				}
-			})
-			let killableArr = [];
-			killableArr = enemyPlayer.heroes.map(item => {
-				if (isFireKillable(item.hp, item.attack, countRedGems)) {
-					return item.id;
-				}
-			}).filter(item => item !== undefined);
-			// const buffEnemy = GetBuffEnemy();
-			// enemyPlayer.heroes.forEach(item => {
-			// 	arr.push({
-			// 		restHp: (item.hp - (item.attack + countRedGems)).toString(),
-			// 		restMana: item.maxMana - item.mana,
-			// 		id: item.id,
-			// 	});
-			// })
-			console.log(killableArr);
-			killableArr.length > 0 ? 
-			SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0] }) : 
-			buffEnemyHasSkill().length > 0 ? SendSwapGem() : 
-			SendCastSkill(botPlayer.heroes[1], { targetId: freeSkill().id });
-		} else if(heroFullMana != null) {
-			SendCastSkill(heroFullMana)
-		} 
-		else {
-			SendSwapGem()
-		}
+		// let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
 
-		// SendCastFireSkill();
-		// let heroFullMana = botPlayer.anyHeroFullMana();
-		// if (heroFullMana != null) {
-		// 	SendCastSkill(heroFullMana)
-		// } else {
-		// 	SendSwapGem()
+		// if (matchGemSizeThanFour) {
+		// 	SendSwapGem(matchGemSizeThanFour)
+		// 	return;
 		// }
 
+		if (botPlayer.heroes[0].isFullMana() && botPlayer.heroes[2].isFullMana()) {
+			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_GOD" })
+			SendCastSkill(botPlayer.heroes[2])
+		}
+
+		if (botPlayer.heroes[0].isFullMana()) {
+			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_SPIRIT" })
+		}
+
+		if (botPlayer.heroes[2].isFullMana()) {
+			SendCastSkill(botPlayer.heroes[2])
+		}
+
+		if (isHaveSeaGodFullMana()) {
+			if (botPlayer.heroes[1].isFullMana()) {
+				let killableArr = [];
+
+				killableArr = enemyPlayer.heroes.map(item => {
+					if (isFireKillable(item.hp, item.attack, getCountGem(3))) {
+						return item.id;
+					}
+				}).filter(item => item !== undefined);
+
+				let killableFullMana = [];
+				
+				if (killableArr.length > 0) {
+					killableFullMana = killableArr.forEach(itemK => {
+						return botPlayer.heroes.filter(item => item.id === itemK && item.isFullMana())
+					})
+				}
+				killableArr.length > 0 ? 
+				SendCastSkill(botPlayer.heroes[1], { targetId: killableFullMana[0] ? killableFullMana[0].id : killableArr[0] }) :
+				SendCastSkill(botPlayer.heroes[1], { targetId: enemyHighestAttack().id });
+			}
+		}
+
+		if (botPlayer.heroes[1].isFullMana()) {
+			castFireSkill();
+		}
+
+		SendSwapGem()
+	
 	}, delaySwapGem);
 }
 
@@ -479,11 +502,25 @@ function compare( a, b ) {
 	return 0;
 }
 
+function compareAttack( a, b ) {
+	if ( a.attack > b.attack ){
+	  return -1;
+	}
+	if ( a.attack < b.attack ){
+	  return 1;
+	}
+	return 0;
+}
+
+function enemyHighestAttack() {
+	return enemyPlayer.heroes.sort(compareAttack)[0];
+}
+
 function buffEnemyHasSkill() {
 	return enemyPlayer.heroes.filter((item) => isHeroBuff(item.id) && item.isFullMana())
 }
 
-function freeSkill() {
+function enemyLowestHP() {
 	return enemyPlayer.heroes.sort(compare)[0];
 }
 
@@ -512,7 +549,6 @@ function isBotTurn() {
 
 function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTargetAllyOrNot } = {}) {
 	var data = new SFS2X.SFSObject();
-console.log("herr", heroCastSkill, targetId);
 	data.putUtfString("casterId", heroCastSkill.id.toString());
 	if (targetId) {
 		data.putUtfString("targetId", targetId);
@@ -546,7 +582,6 @@ console.log("herr", heroCastSkill, targetId);
 
 function SendSwapGem(swap) {
 
-	
 	let indexSwap = swap ? swap.getIndexSwapGem() : grid.recommendSwapGem();
 	log("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + SWAP_GEM + "|index1: " + indexSwap[0] + " index2: " + indexSwap[1]);
 	trace("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + SWAP_GEM + "|index1: " + indexSwap[0] + " index2: " + indexSwap[1]);
@@ -587,7 +622,6 @@ function SendSwapGem(swap) {
 	const yellowGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 2);
 	const redGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 3);
 	const purpleGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 4);
-console.log(botPlayer.heroes);
 	if(botPlayer.heroes[2].isAlive() &&brownGemMatch.length > 0) {
 		data.putInt("index1", parseInt(brownGemMatch[0].index1));
 		data.putInt("index2", parseInt(brownGemMatch[0].index2));
