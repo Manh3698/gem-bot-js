@@ -453,7 +453,9 @@ function StartTurn(param) {
 		}
 
 		if (botPlayer.heroes[0].isFullMana()) {
-			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_SPIRIT" })
+			botPlayer.heroes[2].isAlive() ?
+			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_GOD" }) :
+			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_SPIRIT" });
 		}
 
 		if (botPlayer.heroes[2].isFullMana()) {
