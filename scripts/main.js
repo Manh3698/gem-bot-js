@@ -321,12 +321,6 @@ function StartGame(gameSession, room) {
 	currentPlayerId = gameSession.getInt("currentPlayerId");
 	trace("StartGame ");
 
-	// log("grid :" , grid);
-
-	// SendFinishTurn(true);
-	//taskScheduler.schedule(new FinishTurn(true), new Date(System.currentTimeMillis() + delaySwapGem));
-	//TaskSchedule(delaySwapGem, _ => SendFinishTurn(true));
-
 	setTimeout(function () { SendFinishTurn(true) }, delaySwapGem);
 	visualizer.setGame({
 		game: gameSession,
@@ -412,16 +406,12 @@ function castFireSkill() {
 
 	killableArr = enemyPlayer.getHerosAlive().map(item => {
 		if (isFireKillable(item.hp, item.attack, getCountGem(3))) {
-			return item.id;
+			return item;
 		}
-	}).filter(item => item !== undefined);
-
-	let killableFullMana = killableArr.length > 0 && killableArr.forEach(itemK => {
-		return botPlayer.heroes.filter(item => item.id === itemK && item.isFullMana())
-	})
+	}).filter(item => item !== undefined).sort(compareAttack);
 
 	killableArr.length > 0 ? 
-	SendCastSkill(botPlayer.heroes[1], { targetId: killableFullMana[0] ? killableFullMana[0].id : enemyLowestHP().id }) : 
+	SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0].id }) : 
 	buffEnemyHasSkill().length > 0 ? SendSwapGem() : 
 	SendCastSkill(botPlayer.heroes[1], { targetId: enemyHighestAttack().id });
 }
@@ -440,21 +430,29 @@ function StartTurn(param) {
 			return;
 		}
 
-		// let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
+		let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
+		console.log(matchGemSizeThanFour);
+		if (matchGemSizeThanFour) {
+			SendSwapGem(matchGemSizeThanFour)
+			return;
+		}
 
-		// if (matchGemSizeThanFour) {
-		// 	SendSwapGem(matchGemSizeThanFour)
-		// 	return;
-		// }
+		let matchGemSizeThanThree = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
+
+		console.log(matchGemSizeThanThree);
+		if (matchGemSizeThanFour) {
+			SendSwapGem(matchGemSizeThanThree)
+			return;
+		}
 
 		if (botPlayer.heroes[0].isFullMana() && botPlayer.heroes[2].isFullMana()) {
-			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_GOD" })
+			SendCastSkill(botPlayer.heroes[0], { targetId: botPlayer.heroes[2].id })
 			SendCastSkill(botPlayer.heroes[2])
 		}
 
 		if (botPlayer.heroes[0].isFullMana()) {
 			botPlayer.heroes[2].isAlive() ?
-			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_GOD" }) :
+			SendCastSkill(botPlayer.heroes[0], { targetId: botPlayer.heroes[2].id }) :
 			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_SPIRIT" });
 		}
 
@@ -466,22 +464,14 @@ function StartTurn(param) {
 			if (botPlayer.heroes[1].isFullMana()) {
 				let killableArr = [];
 
-				killableArr = enemyPlayer.heroes.map(item => {
+				killableArr = enemyPlayer.getHerosAlive().map(item => {
 					if (isFireKillable(item.hp, item.attack, getCountGem(3))) {
-						return item.id;
+						return item;
 					}
-				}).filter(item => item !== undefined);
+				}).filter(item => item !== undefined).sort(compareAttack);
 
-				let killableFullMana = [];
-				
-				if (killableArr.length > 0) {
-					killableFullMana = killableArr.forEach(itemK => {
-						return botPlayer.heroes.filter(item => item.id === itemK && item.isFullMana())
-					})
-				}
-				killableArr.length > 0 ? 
-				SendCastSkill(botPlayer.heroes[1], { targetId: killableFullMana[0] ? killableFullMana[0].id : killableArr[0] }) :
-				SendCastSkill(botPlayer.heroes[1], { targetId: enemyHighestAttack().id });
+				killableArr.length > 0 &&
+				SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0].id });
 			}
 		}
 
@@ -527,23 +517,12 @@ function enemyLowestHP() {
 }
 
 function isFireKillable(hp, attack, gem) {
-	console.log(hp, attack, gem, hp - (attack + gem));
 	return hp - (attack + gem) <= 0 ? true : false
 }
 
 function GetBuffEnemy() {
 	return enemyPlayer.heroes.filter((item) => item.id === 'MONK' || item.id === 'SEA_SPIRIT' || item.id === 'MERMAID');
 }
-
-// function SendCastFireSkill() {
-// 	let countRedGems = 0;
-// 	grid.gems.forEach((item) => {
-// 		if (item.type === 3) {
-// 			countRedGems++;
-// 		}
-// 	})
-// 	console.log('countRedGems', countRedGems);
-// }
 
 function isBotTurn() {
 	return botPlayer.playerId == currentPlayerId;
@@ -624,27 +603,47 @@ function SendSwapGem(swap) {
 	const yellowGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 2);
 	const redGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 3);
 	const purpleGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 4);
-	if(botPlayer.heroes[2].isAlive() &&brownGemMatch.length > 0) {
+	const swordGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 0);
+
+	if(botPlayer.heroes[0].isAlive() && yellowGemMatch.length > 0) {
+		data.putInt("index1", parseInt(yellowGemMatch[0].index1));
+		data.putInt("index2", parseInt(yellowGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return;
+	} else if (botPlayer.heroes[0].isAlive() && greenGemMatch.length > 0) {
+		data.putInt("index1", parseInt(greenGemMatch[0].index1));
+		data.putInt("index2", parseInt(greenGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return
+	} else if (botPlayer.heroes[2].isAlive() && brownGemMatch.length > 0) {
 		data.putInt("index1", parseInt(brownGemMatch[0].index1));
 		data.putInt("index2", parseInt(brownGemMatch[0].index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
-		return;
-	} else if (botPlayer.heroes[2].isAlive() &&blueGemMatch.length > 0) {
+		return
+	} else if (botPlayer.heroes[2].isAlive() && blueGemMatch.length > 0) {
 		data.putInt("index1", parseInt(blueGemMatch[0].index1));
 		data.putInt("index2", parseInt(blueGemMatch[0].index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
-	} else if (botPlayer.heroes[1].isAlive() && yellowGemMatch.length > 0) {
-		data.putInt("index1", parseInt(yellowGemMatch[0].index1));
-		data.putInt("index2", parseInt(yellowGemMatch[0].index2));
+	} else if (botPlayer.heroes[1].isAlive() && redGemMatch.length > 0) {
+		data.putInt("index1", parseInt(redGemMatch[0].index1));
+		data.putInt("index2", parseInt(redGemMatch[0].index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
-	} else if (botPlayer.heroes[1].isAlive() && greenGemMatch.length > 0) {
-		data.putInt("index1", parseInt(greenGemMatch[0].index1));
-		data.putInt("index2", parseInt(greenGemMatch[0].index2));
+	} else if (botPlayer.heroes[1].isAlive() && purpleGemMatch.length > 0) {
+		data.putInt("index1", parseInt(purpleGemMatch[0].index1));
+		data.putInt("index2", parseInt(purpleGemMatch[0].index2));
+		
+		SendExtensionRequest(SWAP_GEM, data);
+		return
+	} else if (swordGemMatch.length > 0) {
+		data.putInt("index1", parseInt(swordGemMatch[0].index1));
+		data.putInt("index2", parseInt(swordGemMatch[0].index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
