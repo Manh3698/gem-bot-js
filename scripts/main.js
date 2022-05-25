@@ -37,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "nhan.nguyenduy";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJuaGFuLm5ndXllbmR1eSIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTMzNjk3MzQ4MjYsImV4cCI6MTY1NTE2OTczNH0.P4ZnpfHpGF9ACTJWGUjlj3oBJVG8w0LjUEzcE0iULId6jMVUqRVaBHqiJuWlIUrBGLDH47bE1mJwln1SYV9l7g";
+const username = "manh.nguyenvan";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM0NzM2NzAyNTAsImV4cCI6MTY1NTI3MzY3MH0.rtFPjxh--Hdc-LCvspC5tgvWakKuqbeusOjm3nCYSlQkWqSK2wTbw0l5v8BKpr-gcdWU1dyBXUPJDIuJCzYclw";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -434,16 +434,16 @@ function StartTurn(param) {
 		}
 
 		let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
-		console.log(matchGemSizeThanFour);
+		console.log("5", matchGemSizeThanFour);
 		if (matchGemSizeThanFour) {
 			SendSwapGem(matchGemSizeThanFour)
 			return;
 		}
 
-		let matchGemSizeThanThree = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
+		let matchGemSizeThanThree = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 3);
 
-		console.log(matchGemSizeThanThree);
-		if (matchGemSizeThanFour) {
+		console.log("4", matchGemSizeThanThree);
+		if (matchGemSizeThanThree) {
 			SendSwapGem(matchGemSizeThanThree)
 			return;
 		}
@@ -571,7 +571,13 @@ function SendSwapGem(swap) {
 	trace("sendExtensionRequest()|room:" + room.Name + "|extCmd:" + SWAP_GEM + "|index1: " + indexSwap[0] + " index2: " + indexSwap[1]);
 	
 	var data = new SFS2X.SFSObject();
-	
+	if(swap) {
+		data.putInt("index1", parseInt(indexSwap[0]));
+		data.putInt("index2", parseInt(indexSwap[1]));
+		SendExtensionRequest(SWAP_GEM, data);
+		return;
+	}
+
 	var myFirstHero = botPlayer.getHerosAlive()[0];
 	var enemyFirstHero = enemyPlayer.getHerosAlive()[0];
 	if(myFirstHero.attack >= enemyFirstHero.hp) {
