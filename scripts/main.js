@@ -37,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "nhan.nguyenduy";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJuaGFuLm5ndXllbmR1eSIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM1NDIxODU4MzMsImV4cCI6MTY1NTM0MjE4NX0.COnAzD9BXsQN-9HGYMP49jVZtU42TVPWlKVIkhs8os4UdHHqZjYW-KbhZDi19pn56HyvkoGBrKvKltMAKe2XMg";
+const username = "manh.nguyenvan";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM1NjEwNDg0MDUsImV4cCI6MTY1NTM2MTA0OH0.utKocw754wrvlzuRJTlzprCNzjJCb1We32UGg092ZQg5f1TQkBrYPzREeiRRgLSq_IOW-kgIDBxUAg28-yG5GA";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -424,6 +424,14 @@ function castFireSkill() {
     }
 }
 
+function checkMatchThanfour(){
+	let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
+	if (matchGemSizeThanFour) {
+		setTimeout(function () { SendSwapGem(matchGemSizeThanFour) }, delaySwapGem);
+		return;
+	}
+}
+
 function StartTurn(param) {
 	setTimeout(function() {
 		visualizer.snapShot();
@@ -438,23 +446,22 @@ function StartTurn(param) {
 			return;
 		}
 
-		let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
-
-		if (matchGemSizeThanFour) {
-			setTimeout(function () { SendSwapGem(matchGemSizeThanFour) }, delaySwapGem);
-			return;
-		}
-
-		if (botPlayer.heroes[0].isFullMana() && botPlayer.heroes[2].isFullMana()) {
-			SendCastSkill(botPlayer.heroes[0], { targetId: botPlayer.heroes[2].id })
+		
+		
+		if (botPlayer.heroes[0].isAlive().isFullMana() && botPlayer.heroes[2].isAlive().isFullMana()) {
+			SendCastSkill(botPlayer.heroes[0], { targetId: botPlayer.heroes[2].id });
+			checkMatchThanfour();
 			SendCastSkill(botPlayer.heroes[2])
 		}
-
-		if (botPlayer.heroes[0].isFullMana()) {
+		
+		if (botPlayer.heroes[0].isAlive().isFullMana()) {
 			botPlayer.heroes[2].isAlive() ?
 			SendCastSkill(botPlayer.heroes[0], { targetId: botPlayer.heroes[2].id }) :
 			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_SPIRIT" });
+			checkMatchThanfour();
 		}
+		
+		checkMatchThanfour();
 
 		if (botPlayer.heroes[2].isFullMana()) {
 			SendCastSkill(botPlayer.heroes[2])
@@ -577,6 +584,7 @@ function getPriority(gemMatch) {
 	let indexPriority;
 	gemMatch.forEach(item => {
 		if (grid.clone().performSwap(item.index1, item.index2).matchesSize.length > priority) {
+			priority = grid.clone().performSwap(item.index1, item.index2).matchesSize.length;
 			indexPriority = item;
 		}
 	});
