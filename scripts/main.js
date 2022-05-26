@@ -23,7 +23,7 @@ const BATTLE_MODE = "BATTLE_MODE";
 const ENEMY_PLAYER_ID = 0;
 const BOT_PLAYER_ID = 2;
 
-const delaySwapGem = 2000;
+const delaySwapGem = 3000;
 const delayFindGame = 5000;
 
 const SINGLEATTACKHEROS = ["DISPATER", "SKELETON", "FIRE_SPIRIT"];
@@ -37,8 +37,8 @@ var enemyPlayer;
 var currentPlayerId;
 var grid;
 
-const username = "manh.nguyenvan";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM0NzM2NzAyNTAsImV4cCI6MTY1NTI3MzY3MH0.rtFPjxh--Hdc-LCvspC5tgvWakKuqbeusOjm3nCYSlQkWqSK2wTbw0l5v8BKpr-gcdWU1dyBXUPJDIuJCzYclw";
+const username = "nhan.nguyenduy";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJuaGFuLm5ndXllbmR1eSIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM1NDIxODU4MzMsImV4cCI6MTY1NTM0MjE4NX0.COnAzD9BXsQN-9HGYMP49jVZtU42TVPWlKVIkhs8os4UdHHqZjYW-KbhZDi19pn56HyvkoGBrKvKltMAKe2XMg";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -413,10 +413,15 @@ function castFireSkill() {
 		}
 	}).filter(item => item !== undefined).sort(compareAttack);
 
-	killableArr.length > 0 ? 
-	SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0].id }) : 
-	buffEnemyHasSkill().length > 0 ? SendSwapGem() : 
-	SendCastSkill(botPlayer.heroes[1], { targetId: enemyHighestAttack().id });
+	if (killableArr.length > 0) {
+        SendCastSkill(botPlayer.heroes[1], { targetId: killableArr[0].id });
+    } else {
+        if (buffEnemyHasSkill().length > 0) {
+			setTimeout(function () { SendSwapGem() }, delaySwapGem);
+        } else {
+            SendCastSkill(botPlayer.heroes[1], { targetId: enemyHighestAttack() ? enemyHighestAttack().id : enemyPlayer.getHerosAlive()[0] })
+        }
+    }
 }
 
 function StartTurn(param) {
@@ -434,17 +439,9 @@ function StartTurn(param) {
 		}
 
 		let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
-		console.log("5", matchGemSizeThanFour);
+
 		if (matchGemSizeThanFour) {
-			SendSwapGem(matchGemSizeThanFour)
-			return;
-		}
-
-		let matchGemSizeThanThree = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 3);
-
-		console.log("4", matchGemSizeThanThree);
-		if (matchGemSizeThanThree) {
-			SendSwapGem(matchGemSizeThanThree)
+			setTimeout(function () { SendSwapGem(matchGemSizeThanFour) }, delaySwapGem);
 			return;
 		}
 
@@ -481,6 +478,13 @@ function StartTurn(param) {
 		if (botPlayer.heroes[1].isFullMana()) {
 			castFireSkill();
 		}
+		
+		let matchGemSizeThanThree = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 3);
+
+		if (matchGemSizeThanThree) {
+			setTimeout(function () { SendSwapGem(matchGemSizeThanThree) }, delaySwapGem);
+			return;
+		}
 
 		SendSwapGem()
 	
@@ -508,23 +512,27 @@ function compareAttack( a, b ) {
 }
 
 function enemyHighestAttack() {
-	return enemyPlayer.heroes.sort(compareAttack)[0];
+	if (enemyPlayer.getHerosAlive().filter(item => item.id !== "ELIZAH" || item.id !== "SKELETON").length > 0) {
+		return enemyPlayer.getHerosAlive().filter(item => item.id !== "ELIZAH" || item.id !== "SKELETON").sort(compareAttack)[0];
+	} else {
+		return enemyPlayer.getHerosAlive().sort(compareAttack)[0];
+	}
 }
 
 function buffEnemyHasSkill() {
-	return enemyPlayer.heroes.filter((item) => isHeroBuff(item.id) && item.isFullMana())
+    return enemyPlayer.getHerosAlive().filter((item) => isHeroBuff(item.id) && item.isFullMana())
 }
 
 function enemyLowestHP() {
-	return enemyPlayer.heroes.sort(compare)[0];
+    return enemyPlayer.heroes.sort(compare)[0];
 }
 
 function isFireKillable(hp, attack, gem) {
-	return hp - (attack + gem) <= 0 ? true : false
+    return hp - (attack + gem) <= 0 ? true : false
 }
 
-function GetBuffEnemy() {
-	return enemyPlayer.heroes.filter((item) => item.id === 'MONK' || item.id === 'SEA_SPIRIT' || item.id === 'MERMAID');
+function enemyHasBuff() {
+    return enemyPlayer.heroes.some((item) => isHeroBuff(item.id));
 }
 
 function isBotTurn() {
@@ -564,6 +572,17 @@ function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTarge
 	SendExtensionRequest(END_TURN, data);
 }
 
+function getPriority(gemMatch) {
+	let priority = 0;
+	let indexPriority;
+	gemMatch.forEach(item => {
+		if (grid.clone().performSwap(item.index1, item.index2).matchesSize.length > priority) {
+			indexPriority = item;
+		}
+	});
+	return indexPriority
+}
+
 function SendSwapGem(swap) {
 
 	let indexSwap = swap ? swap.getIndexSwapGem() : grid.recommendSwapGem();
@@ -586,7 +605,6 @@ function SendSwapGem(swap) {
 				data.putInt("index1", parseInt(item.index1));
 				data.putInt("index2", parseInt(item.index2));
 				
-				console.log("listMatchGemHUHUHUHU",data);
 				SendExtensionRequest(SWAP_GEM, data);
 				return;
 			};
@@ -599,7 +617,6 @@ function SendSwapGem(swap) {
 				data.putInt("index1", parseInt(item.index1));
 				data.putInt("index2", parseInt(item.index2));
 				
-				console.log("listMatchGemHUHUHUHU",data);
 				SendExtensionRequest(SWAP_GEM, data);
 				return;
 			};
@@ -614,45 +631,109 @@ function SendSwapGem(swap) {
 	const purpleGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 4);
 	const swordGemMatch = findGemTypeMatch(indexSwap.listMatchGem, 0);
 
+	// enemy has buff => select red gem
+    if (enemyHasBuff()) {
+
+        if (botPlayer.heroes[1].isAlive() && redGemMatch.length > 0) {
+			const item = getPriority(redGemMatch);
+
+            data.putInt("index1", parseInt(item.index1));
+            data.putInt("index2", parseInt(item.index2));
+            
+            SendExtensionRequest(SWAP_GEM, data);
+            return
+        } else if (botPlayer.heroes[1].isAlive() && purpleGemMatch.length > 0) {
+			const item = getPriority(purpleGemMatch);
+
+            data.putInt("index1", parseInt(item.index1));
+            data.putInt("index2", parseInt(item.index2));
+            
+            SendExtensionRequest(SWAP_GEM, data);
+            return
+        }
+    }
+
+    // ceberous died => select red gem or sword
+    if (!botPlayer.heroes[2].isAlive()) {
+
+        if (botPlayer.heroes[1].isAlive() && redGemMatch.length > 0) {
+			const item = getPriority(redGemMatch);
+
+            data.putInt("index1", parseInt(item.index1));
+            data.putInt("index2", parseInt(item.index2));
+            
+            SendExtensionRequest(SWAP_GEM, data);
+            return
+        } else if (botPlayer.heroes[1].isAlive() && purpleGemMatch.length > 0) {
+			const item = getPriority(purpleGemMatch);
+            data.putInt("index1", parseInt(item.index1));
+            data.putInt("index2", parseInt(item.index2));
+            
+            SendExtensionRequest(SWAP_GEM, data);
+            return
+        } else if (swordGemMatch.length > 0) {
+			const item = getPriority(swordGemMatch);
+            data.putInt("index1", parseInt(item.index1));
+            data.putInt("index2", parseInt(item.index2));
+            
+            SendExtensionRequest(SWAP_GEM, data);
+            return
+        }
+    }
+
 	if(botPlayer.heroes[0].isAlive() && yellowGemMatch.length > 0) {
-		data.putInt("index1", parseInt(yellowGemMatch[0].index1));
-		data.putInt("index2", parseInt(yellowGemMatch[0].index2));
+		const item = getPriority(yellowGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return;
 	} else if (botPlayer.heroes[0].isAlive() && greenGemMatch.length > 0) {
-		data.putInt("index1", parseInt(greenGemMatch[0].index1));
-		data.putInt("index2", parseInt(greenGemMatch[0].index2));
+		const item = getPriority(greenGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
 	} else if (botPlayer.heroes[2].isAlive() && brownGemMatch.length > 0) {
-		data.putInt("index1", parseInt(brownGemMatch[0].index1));
-		data.putInt("index2", parseInt(brownGemMatch[0].index2));
+		const item = getPriority(brownGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
 	} else if (botPlayer.heroes[2].isAlive() && blueGemMatch.length > 0) {
-		data.putInt("index1", parseInt(blueGemMatch[0].index1));
-		data.putInt("index2", parseInt(blueGemMatch[0].index2));
+		const item = getPriority(blueGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
 	} else if (botPlayer.heroes[1].isAlive() && redGemMatch.length > 0) {
-		data.putInt("index1", parseInt(redGemMatch[0].index1));
-		data.putInt("index2", parseInt(redGemMatch[0].index2));
+		const item = getPriority(redGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
 	} else if (botPlayer.heroes[1].isAlive() && purpleGemMatch.length > 0) {
-		data.putInt("index1", parseInt(purpleGemMatch[0].index1));
-		data.putInt("index2", parseInt(purpleGemMatch[0].index2));
+		const item = getPriority(purpleGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
 	} else if (swordGemMatch.length > 0) {
-		data.putInt("index1", parseInt(swordGemMatch[0].index1));
-		data.putInt("index2", parseInt(swordGemMatch[0].index2));
+		const item = getPriority(swordGemMatch);
+
+		data.putInt("index1", parseInt(item.index1));
+		data.putInt("index2", parseInt(item.index2));
 		
 		SendExtensionRequest(SWAP_GEM, data);
 		return
@@ -675,7 +756,6 @@ function SwapGem(param) {
 
 	HandleGems(param);
 }
-
 
 function HandleGems(paramz) {
 	let gameSession = paramz.getSFSObject("gameSession");
