@@ -38,7 +38,7 @@ var currentPlayerId;
 var grid;
 
 const username = "manh.nguyenvan";
-const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM1NjEwNDg0MDUsImV4cCI6MTY1NTM2MTA0OH0.utKocw754wrvlzuRJTlzprCNzjJCb1We32UGg092ZQg5f1TQkBrYPzREeiRRgLSq_IOW-kgIDBxUAg28-yG5GA";
+const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYW5oLm5ndXllbnZhbiIsImF1dGgiOiJST0xFX1VTRVIiLCJMQVNUX0xPR0lOX1RJTUUiOjE2NTM2NDkyMjA0OTAsImV4cCI6MTY1NTQ0OTIyMH0.-BVmlo6EIBuHaqAL27d5Tl2ivE3KaQShP5qn4A8fZGhQEY09DPiC00oQ9E6-ZMBai4MuKfKuFOxNGsTpH_LJmg";
 var visualizer = new Visualizer({ el: '#visual' });
 var params = window.params;
 var strategy = window.strategy;
@@ -427,7 +427,6 @@ function castFireSkill() {
 
 function checkMatchThanfour(){
 	let matchGemSizeThanFour = grid.suggestMatch().find(gemMatch => gemMatch.sizeMatch > 4);
-	console.log("ahahahah", matchGemSizeThanFour);
 	if (matchGemSizeThanFour) {
 		SendSwapGem(matchGemSizeThanFour);
 		return;
@@ -477,6 +476,7 @@ function StartTurn(param) {
 			botPlayer.heroes[2].isAlive() ?
 			SendCastSkill(botPlayer.heroes[0], { targetId: botPlayer.heroes[2].id }) :
 			SendCastSkill(botPlayer.heroes[0], { targetId: "SEA_SPIRIT" });
+			return;
 			checkMatchThanfour();
 		}
 		
@@ -566,7 +566,8 @@ function isBotTurn() {
 }
 
 function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTargetAllyOrNot } = {}) {
-	var data = new SFS2X.SFSObject();
+	try {
+		var data = new SFS2X.SFSObject();
 	data.putUtfString("casterId", heroCastSkill.id.toString());
 	if (targetId) {
 		data.putUtfString("targetId", targetId);
@@ -596,6 +597,10 @@ function SendCastSkill(heroCastSkill, { targetId, selectedGem, gemIndex, isTarge
 
 	SendExtensionRequest(USE_SKILL, data);
 	SendExtensionRequest(END_TURN, data);
+	} catch (error) {
+		console.log(error);
+		SendSwapGem();
+	}
 }
 
 function getPriority(gemMatch) {
